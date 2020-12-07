@@ -25,7 +25,7 @@ violin_plotter <- function(df, dds, desired_parameter, save = 'F', savedirectory
     rownames(res) <- gsub('-','.',rownames(res)) #change res rownames to match
     pval <- formatC(res[rownames(res) == desired_parameter, 'padj'], format = 'e', digits = 2) #format pval
     fold_change <- as.character(round(2^(res[rownames(res) == desired_parameter, 'log2FoldChange']),4))
-    y_label <- paste("Gene expression", "(Z-score normalized count)", sep = '\n')
+    y_label <- paste("Gene expression", "(Z-score log2 normalized count)", sep = '\n')
     color_choice <- c('#16A085','#C0392B')
     
     #z-score transformation
