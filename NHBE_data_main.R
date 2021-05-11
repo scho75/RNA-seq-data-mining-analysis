@@ -77,7 +77,7 @@ df_master <- merge(data.frame(t(ncount_df)), metadata_df, by='row.names')
 source('bar_plotter.R')
 
 interested <- c('NLRC5','HLA.A','HLA.B','HLA.C','TAP1', 'PSMB9')
-for (i in interested){
-  bar_plotter(df_master, dds = dds, desired_gene = i, save = 'T', savedirectory = './')
-}
 
+for (i in interested){
+  bar_plotter(df_master, dds = dds, desired_gene = i, save = 'T', savedirectory = './NHBE_interested_normcounts')
+}
