@@ -1,4 +1,4 @@
-#Processing and figures for Yoo et al., Cell Host & Microbe 2021 
+#Processing and figures for Yoo et al., Nat Commun 2021 
 
 #-------------------------------------- 
 # Libraries
@@ -64,51 +64,6 @@ dds <- DESeq(dds)
 ncount_df <- counts(dds, normalized=TRUE)
 #merge normalized data with clinical data
 df_master <- merge(data.frame(t(ncount_df)),df_clinical, by='row.names')
-# define immune influx parameter based on PTPRC aka CD45 median expression
-df_master$immune_influx <- ifelse(df_master$infection_status == 'negative', 'negative',
-                                  ifelse(df_master$PTPRC < median(df_master$PTPRC), 'low','high'))
-df_master$immune_influx <- factor(df_master$immune_influx, levels = c('negative','low','high'))
-
-#-------------------------------------- 
-# Add in immune influx parameter to dds
-#-------------------------------------- 
-all(rownames(colData(dds)) == df_master$Row.names) #check order of rows are the same
-colData(dds) <- cbind(colData(dds)[1:8], df_master$immune_influx)
-names(colData(dds))[9] <- 'immune_influx'
-
-design(dds) <- formula(~ immune_influx)
-dds <- DESeq(dds)
-
-#extract norm counts
-ncount_df <- counts(dds, normalized=TRUE)
-#merge normalized data with metadata
-df_master <- merge(data.frame(t(ncount_df)), data.frame(colData(dds)), by='row.names')
-
-#-------------------------------------- 
-# Fig. 1A - Heatmapping with ComplexHeatmap
-#-------------------------------------- 
-source('heatmap_from_matrix_count.R')
-heatmap_mhc <- c('NLRC5','B2M','HLA-A','HLA-B','HLA-C','HLA-E','HLA-F','TAP1', 'PSMB9','PTPRC')
-
-heatmap_from_matrix_count(matrix_count = ncount_df, 
-                          df = df_master, 
-                          gene_list = heatmap_mhc)
-
-#-------------------------------------- 
-# Fig. 1B - Violin plots for age and viral load
-#-------------------------------------- 
-source('violin_plotter.R')
-violin_plotter(df_master, dds = dds, desired_parameter = 'age', save = 'T', savedirectory = './')
-violin_plotter(df_master, dds = dds, desired_parameter = 'viral_load',  save = 'T', savedirectory = './')
-
-#-------------------------------------- 
-# Fig. 1C - Violin plotting for MHC class I genes
-#-------------------------------------- 
-fig1c_mhc <- c('NLRC5','HLA.A','HLA.B','HLA.C','TAP1', 'PSMB9')
-
-for (i in fig1c_mhc){
-  violin_plotter(df_master, dds = dds, desired_parameter = i, save = 'T', savedirectory = './')
-}
 
 #-------------------------------------- 
 # Fig. S1A - Correlation plots
@@ -117,7 +72,67 @@ source('corr_plotter.R')
 
 figs1a_mhc <- c('NLRC5','B2M','HLA.A','HLA.B','HLA.C','TAP1', 'PSMB9','STAT1','IRF1')
 for (i in figs1a_mhc){
-  corr_plotter(df_master, x = 'PTPRC', i, save = 'T', savedirectory = './')
+  corr_plotter(df_master, x = 'PTPRC', i, save = 'T', savedirectory = './figs1a')
 }
 
+#-------------------------------------- 
+# Use infection status negative patients' CD45 expression distribution as ref and exclude patients in infected group with high CD45
+#-------------------------------------- 
+q <- quantile(df_master[which(df_master$infection_status == 'negative'),'PTPRC'], probs=c(.25,.75), na.rm=FALSE)
+iqr <- IQR(df_master[which(df_master$infection_status == 'negative'),'PTPRC'])
+upper_bound <- q[2] + 1.5*iqr #129
+lower_bound <- q[1] - 1.5*iqr #-65.2
 
+pat_ids <- df_master[!(df_master$PTPRC > upper_bound), 'Row.names'] #retrieve patient ids that fit criteria
+#edit original df
+df <- df[,pat_ids]
+#edit clinical df
+df_clinical <- df_clinical[which(rownames(df_clinical) %in% pat_ids),]
+df <- df[,rownames(df_clinical)]
+
+#dds
+dds <- DESeqDataSetFromMatrix(countData = df,
+                              colData = df_clinical,
+                              design = ~ infection_status)
+# keep genes that have more than 10 total counts when all samples are summed
+keep <- rowSums(counts(dds)) >= 10
+dds <- dds[keep,]
+# run
+dds <- DESeq(dds)
+
+#extract norm counts
+ncount_df <- counts(dds, normalized=TRUE)
+#merge normalized data with clinical data
+df_master <- merge(data.frame(t(ncount_df)),df_clinical, by='row.names')
+
+#-------------------------------------- 
+# Fig. 1A - Heatmapping with ComplexHeatmap
+#-------------------------------------- 
+source('heatmap_from_matrix_count.R')
+heatmap_mhc <- c('NLRC5','B2M','HLA-A','HLA-B','HLA-C','HLA-E','HLA-F','TAP1', 'PSMB9')
+
+heatmap_from_matrix_count(matrix_count = ncount_df, 
+                          df = df_master, 
+                          gene_list = heatmap_mhc)
+
+#-------------------------------------- 
+# Fig. 1B - Violin plots for age and CD45
+#-------------------------------------- 
+source('violin_plotter.R')
+violin_plotter(df_master, dds = dds, desired_parameter = 'age', save = 'T', savedirectory = './fig1b')
+violin_plotter(df_master, dds = dds, desired_parameter = 'PTPRC', save = 'T', savedirectory = './fig1b')
+#gender %s
+table(df_master[which(df_master$infection_status == 'negative'),'gender'])
+table(df_master[which(df_master$infection_status == 'positive' & df_master$gender != 'not collected'),'gender'])
+#median age values
+median(df_master[which(df_master$infection_status == 'negative'),'age'])
+median(df_master[which(df_master$infection_status == 'positive' & df_master$age != 'NA'),'age'])
+
+#-------------------------------------- 
+# Fig. 1C - Violin plotting for MHC class I genes
+#-------------------------------------- 
+fig1c_mhc <- c('NLRC5','B2M','HLA.A','HLA.B','HLA.C','TAP1', 'PSMB9')
+
+for (i in fig1c_mhc){
+  violin_plotter(df_master, dds = dds, desired_parameter = i, save = 'T', savedirectory = './fig1c')
+}
