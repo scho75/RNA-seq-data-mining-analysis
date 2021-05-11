@@ -37,13 +37,14 @@ bar_plotter <- function(df, dds, desired_gene, save = 'F', savedirectory = './')
   sars_exp <- (df[1:6,desired_gene] - ref_mean_24h) / (ref_sd_24h)
   iav_exp <- (df[7:20,desired_gene] - ref_mean_12h) / (ref_sd_12h)
 
-  y <- c(sars_exp,iav_exp)
+  #y <- c(sars_exp,iav_exp)
+  y <- df[,desired_gene]
   
   #plotting
   gg <- ggplot(df, aes(x = condition, y = y, color = condition, fill = condition)) +
     geom_bar(stat='summary', fun = 'mean', alpha = 0.4, color = 'black') +
     geom_beeswarm(size=4,cex=2) +
-    labs(title= desired_gene, x= x_label, y= paste('Gene expression', '(Z-score normalized count)', sep='\n'))
+    labs(title= desired_gene, x= x_label, y= paste('Gene expression', '(normalized count)', sep='\n'))
   gg <- gg + scale_color_manual(values=c('#16A085','#C0392B', '#62C01D', '#FF8C00','#AE19F1','#0000FF')) +
     scale_fill_manual(values=c('#16A085','#C0392B','#62C01D', '#FF8C00','#AE19F1','#0000FF'))
   gg <- gg + theme_bw() + theme(legend.position = 'none', plot.title = element_text(hjust=0.5),
@@ -55,7 +56,7 @@ bar_plotter <- function(df, dds, desired_gene, save = 'F', savedirectory = './')
   if (save == 'F'){
     gg
   } else if (save == 'T'){
-    savedirectory = './' #where you want to save, defaults to current folder
+    savedirectory = savedirectory #where you want to save, defaults to current folder
     fname = paste(desired_gene,".png",sep="")
     print(paste0("Saving...",fname))
     ggsave(path = savedirectory, 
