@@ -12,15 +12,17 @@ heatmap_from_matrix_count <- function(matrix_count, df, gene_list){
   #transpose back to use in heatmap
   matrix_count <- as.matrix(t(matrix_count))
   
-  anno_df <- df[,c('immune_influx'), drop=FALSE]
-  
-  mat_colors <- list(immune_influx = c('negative' = '#32CD32', 'low' = '#FFD700', 'high' = '#FF0000'))
+  anno_df <- df[,c('infection_status','age_groups','gender','viral_load_groupings'), drop=FALSE]
+  mat_colors <- list(infection_status = c('negative' = '#32CD32', 'positive' = '#FF0000'),
+                     age_groups = c('Unknown' = '#000000','0-29' = '#D8BFD8','30-59' = '#BA55D3','60-100' = '#800080'),
+                     gender = c('M' = '#1E90FF','F' = '#F08080','not collected' = '#000000'),
+                     viral_load_groupings = c('negative' = '#32CD32','low' = '#FFD700','mid' = '#FF8C00','high' = '#FF0000'))
   
   #plot
   ht <- Heatmap(matrix_count, name = 'z-score', na_col='black', 
-                column_split = df$immune_influx,
+                column_split = df$infection_status,
                 column_names_gp = gpar(fontsize = 0.5),
-                row_names_gp = gpar(fontsize = 15),
+                row_names_gp = gpar(fontsize = 10),
                 top_annotation = HeatmapAnnotation(df = anno_df,
                                                    col = mat_colors
                 ),
